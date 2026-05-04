@@ -8,7 +8,7 @@ BUILD_DIR := build
 SRCS := $(wildcard $(SRC_DIR)/*.c)
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
-TARGET := $(BUILD_DIR)/termux-sandbox
+TARGET := termux-sandbox
 
 .PHONY: all clean install
 
@@ -24,7 +24,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(TARGET)
 
 install: $(TARGET)
 	install -Dm755 $(TARGET) $(PREFIX)/usr/bin/termux-sandbox

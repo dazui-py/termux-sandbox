@@ -146,6 +146,7 @@ int cmd_run(int argc, char *argv[]) {
 }
 
 int cmd_list(int argc, char *argv[]) {
+    (void)argc; (void)argv;
     const char *boxes_dir = sandbox_get_boxes_dir();
     DIR *dir = opendir(boxes_dir);
     if (!dir) {

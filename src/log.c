@@ -4,7 +4,8 @@
 #include <time.h>
 
 void log_init(const char *sandbox_name) {
-    // No-op for now, will be used when log path is configured
+    (void)sandbox_name;
+    // Will be used when log path is configured
 }
 
 void log_msg(const char *level, const char *fmt, ...) {
