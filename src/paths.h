@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 // Get base directory for all sandboxes
 const char *sandbox_get_base_dir(void);
@@ -38,13 +39,13 @@ char *sandbox_get_logs_path(const char *name);
 // Check if sandbox exists
 int sandbox_exists(const char *name);
 
-// Ensure base directories exist
-void sandbox_ensure_dirs(void);
+// Ensure base directories exist (returns 0 on success)
+int sandbox_ensure_dirs(void);
 
 // Validate sandbox name
 int sandbox_validate_name(const char *name);
 
-// mkdir -p equivalent
-void mkdir_p(const char *path, mode_t mode);
+// mkdir -p equivalent (returns 0 on success)
+int mkdir_p(const char *path, mode_t mode);
 
 #endif

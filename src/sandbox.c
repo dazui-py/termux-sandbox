@@ -45,7 +45,10 @@ int cmd_create(int argc, char *argv[]) {
     printf("Creating sandbox '%s' with profile '%s'...\n", name, profile);
 
     // Ensure directories
-    sandbox_ensure_dirs();
+    if (sandbox_ensure_dirs() != 0) {
+        fprintf(stderr, "Failed to create sandbox directories\n");
+        return 1;
+    }
 
     // Get rootfs artifact
     char *rootfs_source = rootfs_get_cached();
