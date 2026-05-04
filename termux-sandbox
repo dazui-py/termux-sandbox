@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/lib"
+PROFILES_DIR="$SCRIPT_DIR/profiles"
+
+# Source libraries
+source "$LIB_DIR/paths.sh"
+source "$LIB_DIR/utils.sh"
+source "$LIB_DIR/sandbox.sh"
+source "$LIB_DIR/rootfs.sh"
+source "$LIB_DIR/profiles.sh"
+
+# Show usage
+usage() {
+    cat <<EOF
+termux-sandbox - Isolated Termux environments using PRoot
+
+Usage:
+    termux-sandbox create <name> [--profile <profile>]
+    termux-sandbox enter <name>
+    termux-sandbox run <name> <command> [args...]
+    termux-sandbox list
+    termux-sandbox info <name>
+    termux-sandbox destroy <name>
+
+Commands:
+    create      Create a new sandbox
+    enter       Enter a sandbox shell
+    run         Run a command in a sandbox
+    list        List all sandboxes
+    info        Show sandbox information
+    destroy     Destroy a sandbox
+
+Options:
+    --profile   Profile to use (default: dev)
+    --help      Show this help message
+EOF
+}
+
+# Main command dispatcher
+main() {
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 1
+    fi
+
+    local command="$1"
+    shift
+
+    case "$command" in
+        create)
+            cmd_create "$@"
+            ;;
+        enter)
+            cmd_enter "$@"
+            ;;
+        run)
+            cmd_run "$@"
+            ;;
+        list)
+            cmd_list "$@"
+            ;;
+        info)
+            cmd_info "$@"
+            ;;
+        destroy)
+            cmd_destroy "$@"
+            ;;
+        --help|-h)
+            usage
+            ;;
+        *)
+            error "Unknown command: $command"
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
