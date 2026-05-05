@@ -16,12 +16,14 @@ It creates isolated Termux-like environments where each sandbox has its own:
 
 The real Termux installation stays as the host. Each sandbox gets its own filesystem under:
 
-```text
+```sh
 ~/.termux-sandbox/boxes/<name>/rootfs/
-
+```
 Inside the sandbox, programs still see the normal Termux paths:
+```sh
 /data/data/com.termux/files/home
 /data/data/com.termux/files/usr
+```
 
 But those paths belong to the sandbox rootfs, not to the real Termux installation.
 
