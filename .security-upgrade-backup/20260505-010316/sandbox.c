@@ -5,7 +5,6 @@
 #include "paths.h"
 #include "policy.h"
 #include "rootfs.h"
-#include "sandbox-security.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -16,34 +15,6 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-
-
-static int remove_tree(const char *path) {
-    struct stat st;
-    if (!path || path[0] == '\0') { errno = EINVAL; return -1; }
-    if (lstat(path, &st) != 0) return -1;
-    if (S_ISDIR(st.st_mode)) {
-        DIR *dir = opendir(path);
-        struct dirent *entry;
-        if (!dir) return -1;
-        while ((entry = readdir(dir)) != NULL) {
-            char *child = NULL;
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
-            if (asprintf(&child, "%s/%s", path, entry->d_name) < 0) { closedir(dir); return -1; }
-            if (remove_tree(child) != 0) {
-                int saved = errno;
-                free(child);
-                closedir(dir);
-                errno = saved;
-                return -1;
-            }
-            free(child);
-        }
-        closedir(dir);
-        return rmdir(path);
-    }
-    return unlink(path);
-}
 
 static int require_valid_name(const char *name) {
     if (!sandbox_validate_name(name)) {
@@ -224,15 +195,6 @@ int cmd_create(int argc, char *argv[]) {
 
     if (remove_playstore_motd(rootfs_path) != 0) {
         perror("remove_playstore_motd");
-        free(sandbox_path);
-        free(rootfs_path);
-        free(rootfs_source);
-        return 1;
-    }
-
-
-    if (sandbox_security_install(rootfs_path) != 0) {
-        perror("sandbox_security_install");
         free(sandbox_path);
         free(rootfs_path);
         free(rootfs_source);
@@ -572,8 +534,16 @@ int cmd_destroy(int argc, char *argv[]) {
 
     printf("Destroying sandbox '%s'...\n", name);
 
-    if (remove_tree(path) != 0) {
-        perror("remove_tree");
+    char rm_cmd[1024];
+    int n = snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf -- \"%s\"", path);
+    if (n < 0 || (size_t)n >= sizeof(rm_cmd)) {
+        fprintf(stderr, "Sandbox path too long\n");
+        free(path);
+        return 1;
+    }
+
+    int ret = system(rm_cmd);
+    if (ret != 0) {
         fprintf(stderr, "Failed to destroy sandbox\n");
         free(path);
         return 1;

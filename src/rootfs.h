@@ -1,13 +1,17 @@
 #ifndef ROOTFS_H
 #define ROOTFS_H
 
-// Get cached rootfs artifact path
+/*
+ * Rootfs helpers.
+ *
+ * rootfs_get_cached() may prompt the user to clone the termux-rootfs helper
+ * repository if no local artifact exists. It never downloads/clones without
+ * explicit user confirmation.
+ */
 char *rootfs_get_cached(void);
 
-// Extract rootfs to destination
 int rootfs_extract(const char *source, const char *dest);
 
-// Get current architecture
 const char *get_arch(void);
 
 #endif

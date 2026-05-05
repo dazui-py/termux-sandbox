@@ -276,7 +276,8 @@ static int add_grants(strvec_t *argv, const char *name) {
             continue;
         }
         if (strcmp(mode, "ro") == 0) {
-                    fprintf(stderr, "Grant mode \"ro\" is not supported because PRoot does not kernel-enforce read-only binds. Use \"rw\" or remove the grant.\n");
+                    fprintf(stderr, "Grant mode ro is not supported: PRoot -b does not enforce read-only binds. Use rw explicitly or copy data into the sandbox.
+");
                     continue;
                 }
         if (add_bind(argv, resolved_host, guest_path) != 0) { fclose(fp); return -1; }

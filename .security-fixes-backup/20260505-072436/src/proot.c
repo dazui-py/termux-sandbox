@@ -211,21 +211,6 @@ static int guest_grant_path_allowed(const char *guest_path) {
 }
 
 static int host_grant_path_allowed(const char *resolved_host) {
-    static const char *forbidden_system_prefixes[] = {
-        "/proc", "/sys", "/dev", "/system", "/apex", "/linkerconfig",
-        "/sdcard", "/storage", "/mnt", "/vendor", "/product", "/odm",
-        NULL
-    };
-
-    for (int i = 0; forbidden_system_prefixes[i]; i++) {
-        const char *prefix = forbidden_system_prefixes[i];
-        size_t n = strlen(prefix);
-        if (strcmp(resolved_host, prefix) == 0 ||
-            (strncmp(resolved_host, prefix, n) == 0 && resolved_host[n] == '/')) {
-            return 0;
-        }
-    }
-
     const char *home = getenv("HOME");
     const char *prefix = getenv("PREFIX");
     const char *base = sandbox_get_base_dir();
@@ -276,9 +261,8 @@ static int add_grants(strvec_t *argv, const char *name) {
             continue;
         }
         if (strcmp(mode, "ro") == 0) {
-                    fprintf(stderr, "Grant mode \"ro\" is not supported because PRoot does not kernel-enforce read-only binds. Use \"rw\" or remove the grant.\n");
-                    continue;
-                }
+            log_info("Grant mode 'ro' requested for %s, but PRoot bind read-only is not kernel-enforced", resolved_host);
+        }
         if (add_bind(argv, resolved_host, guest_path) != 0) { fclose(fp); return -1; }
     }
 
@@ -354,9 +338,7 @@ int sandbox_exec_proot(const char *name, char **cmd) {
     if (build_proot_argv(&argv, name, rootfs_path, profile, cmd) != 0) { fprintf(stderr, "Failed to build PRoot argv\n"); goto out; }
 
     printf("Starting sandbox '%s'...\n", name);
-    if (getenv("TERMUX_SANDBOX_DEBUG")) {
-        log_argv(&argv);
-    }
+    log_argv(&argv);
 
     pid_t pid = fork();
     if (pid < 0) { perror("fork"); goto out; }

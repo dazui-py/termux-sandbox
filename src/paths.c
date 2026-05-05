@@ -1,186 +1,269 @@
 #define _GNU_SOURCE
+#include "paths.h"
+
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <dirent.h>
-#include "paths.h"
+#include <unistd.h>
 
 static char *get_home_dir(void) {
     const char *home = getenv("HOME");
-    if (!home) home = "/data/data/com.termux/files/home";
+    if (!home || home[0] == '\0') {
+        home = "/data/data/com.termux/files/home";
+    }
     return strdup(home);
+}
+
+static char *join2(const char *a, const char *b) {
+    char *out = NULL;
+
+    if (!a || !b || a[0] == '\0' || b[0] == '\0') {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    if (asprintf(&out, "%s/%s", a, b) < 0) {
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    return out;
 }
 
 const char *sandbox_get_base_dir(void) {
     static char *cached = NULL;
+
     if (!cached) {
         char *home = get_home_dir();
-        if (!home) return NULL;
-        if (asprintf(&cached, "%s/.termux-sandbox", home) < 0) {
-            cached = NULL;
+        if (!home) {
+            return NULL;
         }
+
+        cached = join2(home, ".termux-sandbox");
         free(home);
     }
+
     return cached;
 }
 
 const char *sandbox_get_boxes_dir(void) {
     static char *cached = NULL;
+
     if (!cached) {
         const char *base = sandbox_get_base_dir();
-        if (!base) return NULL;
-        if (asprintf(&cached, "%s/boxes", base) < 0) {
-            cached = NULL;
-        }
+        cached = join2(base, "boxes");
     }
+
     return cached;
 }
 
 const char *sandbox_get_cache_dir(void) {
     static char *cached = NULL;
+
     if (!cached) {
         const char *base = sandbox_get_base_dir();
-        if (!base) return NULL;
-        if (asprintf(&cached, "%s/cache", base) < 0) {
-            cached = NULL;
-        }
+        cached = join2(base, "cache");
     }
+
     return cached;
 }
 
 const char *sandbox_get_config_dir(void) {
     static char *cached = NULL;
+
     if (!cached) {
         const char *base = sandbox_get_base_dir();
-        if (!base) return NULL;
-        if (asprintf(&cached, "%s/config", base) < 0) {
-            cached = NULL;
-        }
+        cached = join2(base, "config");
     }
+
     return cached;
 }
 
 char *sandbox_get_path(const char *name) {
-    char *path = NULL;
     const char *boxes = sandbox_get_boxes_dir();
-    if (!boxes) return NULL;
-    asprintf(&path, "%s/%s", boxes, name);
-    return path;
+    if (!boxes || !name) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    return join2(boxes, name);
 }
 
 char *sandbox_get_rootfs_path(const char *name) {
+    char *box = sandbox_get_path(name);
     char *path = NULL;
-    const char *boxes = sandbox_get_boxes_dir();
-    if (!boxes) return NULL;
-    asprintf(&path, "%s/%s/rootfs", boxes, name);
+
+    if (!box) {
+        return NULL;
+    }
+
+    path = join2(box, "rootfs");
+    free(box);
     return path;
 }
 
 char *sandbox_get_metadata_path(const char *name) {
+    char *box = sandbox_get_path(name);
     char *path = NULL;
-    const char *boxes = sandbox_get_boxes_dir();
-    if (!boxes) return NULL;
-    asprintf(&path, "%s/%s/metadata.conf", boxes, name);
+
+    if (!box) {
+        return NULL;
+    }
+
+    path = join2(box, "metadata.conf");
+    free(box);
     return path;
 }
 
 char *sandbox_get_policy_path(const char *name) {
+    char *box = sandbox_get_path(name);
     char *path = NULL;
-    const char *boxes = sandbox_get_boxes_dir();
-    if (!boxes) return NULL;
-    asprintf(&path, "%s/%s/policy.conf", boxes, name);
+
+    if (!box) {
+        return NULL;
+    }
+
+    path = join2(box, "policy.conf");
+    free(box);
     return path;
 }
 
 char *sandbox_get_grants_path(const char *name) {
+    char *box = sandbox_get_path(name);
     char *path = NULL;
-    const char *boxes = sandbox_get_boxes_dir();
-    if (!boxes) return NULL;
-    asprintf(&path, "%s/%s/grants.conf", boxes, name);
+
+    if (!box) {
+        return NULL;
+    }
+
+    path = join2(box, "grants.conf");
+    free(box);
     return path;
 }
 
 char *sandbox_get_logs_path(const char *name) {
+    char *box = sandbox_get_path(name);
     char *path = NULL;
-    const char *boxes = sandbox_get_boxes_dir();
-    if (!boxes) return NULL;
-    asprintf(&path, "%s/%s/logs", boxes, name);
+
+    if (!box) {
+        return NULL;
+    }
+
+    path = join2(box, "logs");
+    free(box);
     return path;
 }
 
 int sandbox_exists(const char *name) {
     char *path = sandbox_get_path(name);
-    int ret = access(path, F_OK) == 0;
+    int ret = 0;
+
+    if (!path) {
+        return 0;
+    }
+
+    ret = access(path, F_OK) == 0;
     free(path);
     return ret;
 }
 
 int mkdir_p(const char *path, mode_t mode) {
-    if (path == NULL || path[0] == '\0') {
+    char *tmp = NULL;
+    size_t len;
+
+    if (!path || path[0] == '\0') {
         errno = EINVAL;
         return -1;
     }
 
-    char *p = strdup(path);
-    if (!p) return -1;
+    tmp = strdup(path);
+    if (!tmp) {
+        return -1;
+    }
 
-    char *sep = p;
-    int ret = 0;
+    len = strlen(tmp);
+    while (len > 1 && tmp[len - 1] == '/') {
+        tmp[len - 1] = '\0';
+        len--;
+    }
 
-    while (*sep) {
-        sep = strchr(sep + 1, '/');
-        if (sep) *sep = '\0';
-
-        if (mkdir(p, mode) != 0 && errno != EEXIST) {
-            ret = -1;
-            break;
+    for (char *p = tmp + 1; *p; p++) {
+        if (*p != '/') {
+            continue;
         }
 
-        if (sep) *sep = '/';
+        *p = '\0';
+        if (mkdir(tmp, mode) != 0 && errno != EEXIST) {
+            int saved = errno;
+            free(tmp);
+            errno = saved;
+            return -1;
+        }
+        *p = '/';
     }
 
-    if (ret == 0 && mkdir(p, mode) != 0 && errno != EEXIST) {
-        ret = -1;
+    if (mkdir(tmp, mode) != 0 && errno != EEXIST) {
+        int saved = errno;
+        free(tmp);
+        errno = saved;
+        return -1;
     }
 
-    free(p);
-    return ret;
+    free(tmp);
+    return 0;
 }
 
 int sandbox_validate_name(const char *name) {
-    if (!name || strlen(name) == 0) return 0;
-    if (strlen(name) > 64) return 0;
-    
+    if (!name || name[0] == '\0') {
+        return 0;
+    }
+
+    if (strlen(name) > 64) {
+        return 0;
+    }
+
     for (size_t i = 0; name[i]; i++) {
         char c = name[i];
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-              (c >= '0' && c <= '9') || c == '-' || c == '_')) {
+        if (!((c >= 'a' && c <= 'z') ||
+              (c >= 'A' && c <= 'Z') ||
+              (c >= '0' && c <= '9') ||
+              c == '-' || c == '_')) {
             return 0;
         }
     }
+
     return 1;
 }
 
 int sandbox_ensure_dirs(void) {
+    char *rootfs_cache = NULL;
+    const char *cache = sandbox_get_cache_dir();
+
+    if (cache) {
+        rootfs_cache = join2(cache, "rootfs");
+    }
+
     const char *dirs[] = {
         sandbox_get_base_dir(),
         sandbox_get_boxes_dir(),
-        sandbox_get_cache_dir(),
+        cache,
+        rootfs_cache,
         sandbox_get_config_dir(),
         NULL
     };
+
     for (int i = 0; dirs[i]; i++) {
-        if (dirs[i] == NULL) {
-            fprintf(stderr, "NULL path at index %d\n", i);
-            return -1;
-        }
         if (mkdir_p(dirs[i], 0755) != 0) {
-            perror("mkdir_p");
+            perror(dirs[i]);
+            free(rootfs_cache);
             return -1;
         }
     }
+
+    free(rootfs_cache);
     return 0;
 }
