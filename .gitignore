@@ -1,2 +1,3 @@
-repair-termux-sandbox.sh
 dump-src.sh
+src/*.bak*
+*.py*
